@@ -8,7 +8,9 @@ from typing import Any, Tuple, Union
 import redis
 import sentry_sdk
 import whisper
-from flask import Flask, Request, Response, render_template, request
+import json
+from flask import Flask, Request, Response, send_file, request, jsonify
+from flasgger import Swagger
 from rq import Queue
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
@@ -94,9 +96,33 @@ def is_invalid_params(req: Request) -> Union[bool, Tuple[str, int]]:
     return False
 
 
-@app.route("/", methods=['GET'])
-def index() -> str:
-    return render_template("index.html", disclaimer=DISCLAIMER, sentry_dsn=SENTRY_DSN, environment=ENVIRONMENT)
+@app.route("/openapi.json", methods=['GET'])
+def serve_swagger_file():
+    return send_file("openapi.json", mimetype="application/json")
+
+swagger_config = {
+    "headers": [
+    ],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/openapi.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/",
+    "ui_params": {  # Add this block
+        "supportedSubmitMethods": [],
+        "docExpansion": "none",      
+        "defaultModelsExpandDepth": -1,
+        "explore": False 
+    }
+}
+
+swagger = Swagger(app, config=swagger_config)
 
 
 @app.route("/v1/transcribe", methods=['POST', 'OPTIONS'])
@@ -125,7 +151,7 @@ def transcribe() -> Any:
                     "type": "string",
                     "optional": True,
                 },
-                 "webhook_id": {
+                "webhook_id": {
                     "type": "string",
                     "optional": True,
                 },

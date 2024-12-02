@@ -1,0 +1,5 @@
+This product includes software developed by Schibsted (https://github.com/schibsted/WAAS).
+
+Modifications by FUNIBER - TEACHING ACTION:
+- Replaced webhook-based processing and email notifications with RabbitMQ to implement an event-driven architecture.
+- Removed graphical user interface (GUI) components to optimize the application for streamlined API-based functionality.
