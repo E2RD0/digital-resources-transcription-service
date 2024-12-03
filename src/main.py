@@ -8,7 +8,8 @@ from typing import Any, Tuple, Union
 import redis
 import sentry_sdk
 import whisper
-import json
+import yaml
+from json import dumps as json_dump
 from flask import Flask, Request, Response, send_file, request, jsonify
 from flasgger import Swagger
 from rq import Queue
@@ -98,7 +99,10 @@ def is_invalid_params(req: Request) -> Union[bool, Tuple[str, int]]:
 
 @app.route("/openapi.json", methods=['GET'])
 def serve_swagger_file():
-    return send_file("openapi.json", mimetype="application/json")
+    PATH = os.path.join(os.path.dirname(__file__), '../docs/apiREST/openapi.yaml')
+    with open(PATH, 'r') as source_file:
+        pystruct = yaml.safe_load(source_file)
+    return jsonify(pystruct), 200
 
 swagger_config = {
     "headers": [
@@ -116,8 +120,6 @@ swagger_config = {
     "specs_route": "/",
     "ui_params": {  # Add this block
         "supportedSubmitMethods": [],
-        "docExpansion": "none",      
-        "defaultModelsExpandDepth": -1,
         "explore": False 
     }
 }
