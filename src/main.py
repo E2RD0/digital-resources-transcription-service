@@ -26,7 +26,7 @@ from src.utils import (generate_jojo_doc, generate_srt, generate_text,
                        sanitize_input)
 from src.services.webhook_service import WebhookService
 
-SENTRY_DSN = os.environ.get("SENTRY_DSN")
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "https://f097b9673ac585d6380b821733c3cda1@o4508370735267840.ingest.de.sentry.io/4508370770264144")
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 
 if SENTRY_DSN:
@@ -185,15 +185,11 @@ def transcribe() -> Any:
             quoted_email = request.args.get("email_callback")
             quoted_webhook_id = request.args.get("webhook_id")
             
-            if quoted_email is None and quoted_webhook_id is None:
-                raise Exception("Missing email_callback or/and webhook_id param")
-            
             if quoted_email:
                 email = urllib.parse.unquote(quoted_email)
                 set_user({"email": email})
             else:
                 email = None
-
             
             if quoted_webhook_id:
                 webhook_id = urllib.parse.unquote(quoted_webhook_id)

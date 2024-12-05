@@ -47,7 +47,6 @@ class WebhookService:
             payload = self.create_webhook_payload(job_id, filename, url, success)
             payload_hash = self.create_payload_hash(payload, webhook['token'])
             webhook_url = webhook['url']
-           
             try:
                 req = requests.post(webhook_url, json=payload, allow_redirects=False, timeout=3, headers={'X-WAAS-Signature': payload_hash})
                 req.raise_for_status()
