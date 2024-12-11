@@ -4,7 +4,7 @@ from rq.job import Job
 from src import mailer
 from src.utils import increment_total_time_transcribed
 from src.services.webhook_service import WebhookService
-from src.events.rabbitmq.utils.event_dispatcher import EventDispatcher
+from src.events.rabbitmq.event_dispatcher import EventDispatcher
 
 allowed_webhooks_file = os.environ.get('ALLOWED_WEBHOOKS_FILE', 'allowed_webhooks.json')
 webhook_store = WebhookService(allowed_webhooks_file)
