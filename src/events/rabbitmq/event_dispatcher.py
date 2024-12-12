@@ -13,11 +13,7 @@ class EventDispatcher:
         self.publisher = Publisher(RABBITMQ_APP_ID)
 
     def dispatch_event(self, event_type: str, payload: dict):
-        event = {
-            "type": event_type,
-            "payload": payload
-        }
-        self.publisher.publish(event)
+        self.publisher.publish(event_type, payload)
 
     def close(self):
         self.publisher.close()

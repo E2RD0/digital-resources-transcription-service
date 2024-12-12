@@ -43,7 +43,7 @@ def process_video_event(ch, method, properties, body):
         temp_video_path = video["extraFields"].get("tempVideoPath")
 
         # Download the video file
-        download_url = f"http://{SERVICE_URL}/download/video/{library_id}/{uuid}"
+        download_url = f"{SERVICE_URL}/video/download/{library_id}/{uuid}"
         print(f"Downloading video from: {download_url}")
 
         response = requests.get(download_url, stream=True)
@@ -97,7 +97,9 @@ def process_video_event(ch, method, properties, body):
             meta={
                 'email': email,
                 'webhook_id': webhook_id,
-                'uploaded_filename': uploaded_filename
+                'uploaded_filename': uploaded_filename,
+                'library_id': library_id,
+                'uuid': uuid
             },
             on_success=callbacks.success,
             on_failure=callbacks.failure

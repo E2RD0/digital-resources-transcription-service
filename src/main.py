@@ -23,10 +23,10 @@ from sentry_sdk.integrations.rq import RqIntegration
 from src import callbacks
 from src.utils import (generate_jojo_doc, generate_srt, generate_text,
                        generate_vtt, get_total_time_transcribed,
-                       sanitize_input)
+                       sanitize_input, is_model_supported)
 from src.services.webhook_service import WebhookService
 
-SENTRY_DSN = os.environ.get("SENTRY_DSN", "https://f097b9673ac585d6380b821733c3cda1@o4508370735267840.ingest.de.sentry.io/4508370770264144")
+SENTRY_DSN = os.environ.get("SENTRY_DSN", None)
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 
 if SENTRY_DSN:
@@ -201,6 +201,11 @@ def transcribe() -> Any:
                     }, 405
             else:
                 webhook_id = None
+                
+            if (not is_model_supported(requestedModel)):
+                return {
+                    "error": "Model not supported"
+                }, 405
 
             uploaded_filename = urllib.parse.unquote(
                 request.args.get("filename", DEFAULT_UPLOADED_FILENAME))
@@ -397,6 +402,11 @@ def detect() -> Any:
             # Get the file from the request body and save it to a temporary file
             file = request.data
             tempFile.write(file)
+            
+            if(not is_model_supported(requestedModel)):
+                return {
+                    "error": "Model not supported"
+                }, 405
 
             model = whisper.load_model(requestedModel)
 
