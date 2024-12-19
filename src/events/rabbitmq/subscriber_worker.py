@@ -49,6 +49,14 @@ def process_video_event(ch, method, properties, body):
         response = requests.get(download_url, stream=True)
         if response.status_code != 200:
             print(f"Failed to download video. Status code: {response.status_code}")
+            send_error_event(
+                {
+                    "uuid" : uuid,
+                    "libraryId": library_id,
+                },
+                response.status_code,
+                "Failed to download video from service"
+            )
             return
 
         # Determine the file extension
@@ -104,23 +112,47 @@ def process_video_event(ch, method, properties, body):
             on_success=callbacks.success,
             on_failure=callbacks.failure
         )
-
-        print(f"Enqueued transcription job with ID: {job.get_id()}")
-
-        # Dispatch the 'job_started' event
-        event_dispatcher.dispatch_event(
-            event_type="job_started",
-            payload={
-                "job_id": job.get_id(),
+        
+        send_job_started_event(job, {
+            "uploaded_filename": uploaded_filename,
+            "library_id": library_id,
+            "uuid": uuid,
+            "language": language or "transcribe"
+        })
+        
+        langs = ["en", "es", "fr", "it"]
+        for lang in langs:
+            job = rq_queue.enqueue(
+                'transcriber.transcribe',
+                args=(temp_filename, requested_model, 'transcribe', lang, email, webhook_id),
+                result_ttl=3600 * 24 * 7,
+                job_timeout=3600 * 4,
+                meta={
+                    'email': email,
+                    'webhook_id': webhook_id,
+                    'uploaded_filename': uploaded_filename,
+                    'library_id': library_id,
+                    'uuid': uuid
+                },
+                on_success=callbacks.success,
+                on_failure=callbacks.failure
+            )
+            send_job_started_event(job, {
                 "uploaded_filename": uploaded_filename,
                 "library_id": library_id,
                 "uuid": uuid,
-                "status": "started"
-            }
-        )
-        print(f"Dispatched 'job_started' event for job ID: {job.get_id()}")
+                "language": lang
+            })
 
     except Exception as e:
+        send_error_event(
+            {
+                "uuid": uuid,
+                "libraryId": library_id
+            },
+            type(e).__name__,
+            str(e)
+        )
         logging.exception(f"Error processing video event: {e}")
 
     finally:
@@ -143,6 +175,38 @@ def start_subscriber():
         print("Shutting down subscriber...")
         subscriber.close()
         event_dispatcher.close()  # Clean up dispatcher connection
+        
+def send_error_event(video, errType, errValue):
+    # Publish failure event via EventDispatcher
+    message = {
+        "status": "job_failed",
+        "job_id": None,
+        "error_type": str(errType),
+        "error_value": str(errValue)
+    }
+    if(video["uuid"] and video["libraryId"]):
+        message["video"] = {
+            "uuid": video["uuid"],
+            "libraryId": video["libraryId"]
+        } 
+    event_dispatcher.dispatch_event("job_failed", message)
+
+def send_job_started_event(job, video):
+    print(f"Enqueued transcription job with ID: {job.get_id()}")
+    # Dispatch the 'job_started' event
+    event_dispatcher.dispatch_event(
+        event_type="job_started",
+        payload={
+            "job_id": job.get_id(),
+            "uploaded_filename": video["uploaded_filename"],
+            "library_id": video["library_id"],
+            "uuid": video["uuid"],
+            "status": "started",
+            "language": video.get("language", "transcribe"),
+        }
+    )
+    print(f"Dispatched 'job_started' event for job ID: {job.get_id()}")
+
 
 if __name__ == "__main__":
     start_subscriber()

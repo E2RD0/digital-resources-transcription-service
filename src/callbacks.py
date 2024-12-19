@@ -20,8 +20,8 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
     email = job.meta.get("email")
     webhook_id = job.meta.get("webhook_id")
     filename = job.meta.get("uploaded_filename")
-    uuid = job.meta.get("uuid") or "";
-    libraryId = job.meta.get("library_id") or "";
+    uuid = job.meta.get("uuid") or ""
+    libraryId = job.meta.get("library_id") or ""
     if filename is None:
         raise JobCallbackException('Missing filename in job meta')
 
@@ -36,10 +36,15 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
         except Exception as e:
             print(f"Unable to send email in successful job: {e}")
             if ENVIRONMENT != 'dev':
+                # If not dev environment, we raise the exception to ensure visibility
                 raise JobCallbackException("Unable to send email in successful job")
 
     if webhook_id:
-        webhook_store.post_to_webhook(webhook_id, job.id, filename, url, success=True)
+        try:
+            webhook_store.post_to_webhook(webhook_id, job.id, filename, url, success=True)
+        except Exception as e:
+            print(f"Unable to post to webhook in successful job: {e}")
+            # Do not raise an error to avoid callback failure over a single webhook issue.
 
     # Publish success event via EventDispatcher
     message = {
@@ -49,20 +54,23 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
         "url": url,
         "duration": duration,
     }
-    if(uuid and libraryId):
+    if uuid and libraryId:
         message["video"] = {
             "uuid": uuid,
             "libraryId": libraryId
         }
-    dispatcher.dispatch_event("job_success", message)
-
+    try:
+        dispatcher.dispatch_event("job_success", message)
+    except Exception as e:
+        # Log and continue without raising
+        print(f"Unable to dispatch success event: {e}")
 
 def failure(job: Job, connection: Any, type: Any, value: Any, traceback: Any):
     email = job.meta.get("email")
     webhook_id = job.meta.get("webhook_id")
     filename = job.meta.get("uploaded_filename")
-    uuid = job.meta.get("uuid") or "";
-    libraryId = job.meta.get("library_id") or "";
+    uuid = job.meta.get("uuid") or ""
+    libraryId = job.meta.get("library_id") or ""
     if filename is None:
         raise JobCallbackException('Missing filename in job meta')
 
@@ -75,8 +83,11 @@ def failure(job: Job, connection: Any, type: Any, value: Any, traceback: Any):
                 raise JobCallbackException("Unable to send email in failed job")
 
     if webhook_id:
-        webhook_store.post_to_webhook(webhook_id, job.id, filename, None, success=False)
-
+        try:
+            webhook_store.post_to_webhook(webhook_id, job.id, filename, None, success=False)
+        except Exception as e:
+            print(f"Unable to post to webhook in failed job: {e}")
+            # Again, not raising to avoid a callback failure.
 
     # Publish failure event via EventDispatcher
     message = {
@@ -86,9 +97,13 @@ def failure(job: Job, connection: Any, type: Any, value: Any, traceback: Any):
         "error_type": str(type),
         "error_value": str(value)
     }
-    if(uuid and libraryId):
+    if uuid and libraryId:
         message["video"] = {
             "uuid": uuid,
             "libraryId": libraryId
-        } 
-    dispatcher.dispatch_event("job_failure", message)
+        }
+    try:
+        dispatcher.dispatch_event("job_failure", message)
+    except Exception as e:
+        # Log and continue without raising
+        print(f"Unable to dispatch failure event: {e}")

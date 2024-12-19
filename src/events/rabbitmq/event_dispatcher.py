@@ -8,10 +8,13 @@ RABBITMQ_CONSUME_QUEUE = os.environ.get("RABBITMQ_CONSUME_QUEUE", None)
 
 class EventDispatcher:
     def __init__(self):
-        if(RABBITMQ_APP_ID is None):
+        if RABBITMQ_APP_ID is None:
             raise ValueError("RABBITMQ_APP_ID must be set")
-        self.publisher = Publisher(RABBITMQ_APP_ID)
-
+        try:
+            self.publisher = Publisher(RABBITMQ_APP_ID)
+        except Exception as e:
+            print(f"Error initializing Publisher: {e}")
+            raise e
     def dispatch_event(self, event_type: str, payload: dict):
         self.publisher.publish(event_type, payload)
 

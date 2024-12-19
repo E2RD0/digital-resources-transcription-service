@@ -9,13 +9,22 @@ class Subscriber:
         self.channel.queue_declare(queue=self.queue_name, durable=True)
 
     def consume(self):
+        def wrapped_callback(ch, method, properties, body):
+            try:
+                self.callback(ch, method, properties, body)
+                ch.basic_ack(delivery_tag=method.delivery_tag) 
+            except Exception as e:
+                print(f"Error processing message: {e}")
+                # Optionally, do not ack the message to re-queue it
+
         self.channel.basic_consume(
             queue=self.queue_name,
-            on_message_callback=self.callback,
-            auto_ack=True  # Automatically acknowledge the message
+            on_message_callback=wrapped_callback,
+            auto_ack=False
         )
         print(f"Started consuming on queue: {self.queue_name}")
         self.channel.start_consuming()
+
 
     def close(self):
         self.connection.close()
