@@ -3,81 +3,97 @@ info:
   title: WAAS Service - Video Transcription Events
   version: 1.0.0
   description: >
-    The WAAS service handles video upload events, transcribes video content,
-    sends email/webhook callbacks, and dispatches success/failure events via
-    RabbitMQ.
+    The WAAS service receives video upload events, processes them to transcribe video content,
+    and dispatches job started, success, and failure events via RabbitMQ.
   contact:
-    name: Teaching action
+    name: Teaching Action
+
 servers:
   production:
     host: 'rabbitmq:5672'
     protocol: amqp
-    description: RabbitMQ server for event messaging in production.
+    description: RabbitMQ server for production event messaging.
   development:
     host: 'localhost:5672'
     protocol: amqp
     description: RabbitMQ server for local development.
+
 channels:
   video_uploaded:
     address: video_uploaded
-    messages:
-      subscribe.message:
-        $ref: '#/components/messages/VideoUploaded'
     description: The channel for receiving video upload events to start transcription.
+    messages:
+      VideoUploaded:
+        contentType: application/json
+        payload:
+          $ref: '#/components/messages/VideoUploaded'
+
   job_started:
     address: job_started
+    description: The channel for sending events when a transcription job starts.
     messages:
-      publish.message:
-        $ref: '#/components/messages/JobStarted'
-    description: The channel for publishing events when a transcription job starts.
+      JobStarted:
+        contentType: application/json
+        payload:
+          $ref: '#/components/messages/JobStarted'
+
   job_success:
     address: job_success
+    description: The channel for sending events when a transcription job succeeds.
     messages:
-      publish.message:
-        $ref: '#/components/messages/JobSuccess'
-    description: The channel for publishing events when a transcription job succeeds.
+      JobSuccess:
+        contentType: application/json
+        payload:
+          $ref: '#/components/messages/JobSuccess'
+
   job_failure:
     address: job_failure
+    description: The channel for sending events when a transcription job fails.
     messages:
-      publish.message:
-        $ref: '#/components/messages/JobFailure'
-    description: The channel for publishing events when a transcription job fails.
+      JobFailure:
+        contentType: application/json
+        payload:
+          $ref: '#/components/messages/JobFailure'
+
 operations:
-  video_uploaded.subscribe:
-    action: send
+  videoUploadedReceived:
+    action: receive
     channel:
       $ref: '#/channels/video_uploaded'
     summary: Receive video upload events
     messages:
-      - $ref: '#/channels/video_uploaded/messages/subscribe.message'
-  job_started.publish:
-    action: receive
+      - $ref: '#/channels/video_uploaded/messages/VideoUploaded'
+
+  jobStartedSent:
+    action: send
     channel:
       $ref: '#/channels/job_started'
-    summary: Publish job started events
+    summary: Send job started events
     messages:
-      - $ref: '#/channels/job_started/messages/publish.message'
-  job_success.publish:
-    action: receive
+      - $ref: '#/channels/job_started/messages/JobStarted'
+
+  jobSuccessSent:
+    action: send
     channel:
       $ref: '#/channels/job_success'
-    summary: Publish job success events
+    summary: Send job success events
     messages:
-      - $ref: '#/channels/job_success/messages/publish.message'
-  job_failure.publish:
-    action: receive
+      - $ref: '#/channels/job_success/messages/JobSuccess'
+
+  jobFailureSent:
+    action: send
     channel:
       $ref: '#/channels/job_failure'
-    summary: Publish job failure events
+    summary: Send job failure events
     messages:
-      - $ref: '#/channels/job_failure/messages/publish.message'
+      - $ref: '#/channels/job_failure/messages/JobFailure'
+
 components:
   messages:
     VideoUploaded:
       name: VideoUploaded
       title: Video Uploaded Event
       summary: Event triggered when a video is uploaded to the system.
-      contentType: application/json
       payload:
         type: object
         required:
@@ -112,11 +128,11 @@ components:
                   tempVideoPath:
                     type: string
                     description: Temporary path of the uploaded video file.
+
     JobStarted:
       name: JobStarted
       title: Job Started Event
-      summary: Event triggered when a transcription job starts processing.
-      contentType: application/json
+      summary: Event sent when a transcription job starts.
       payload:
         type: object
         required:
@@ -134,20 +150,19 @@ components:
             description: Name of the uploaded video file.
           library_id:
             type: string
-            description: ID of the library where the video resides.
+            description: Library ID of the video.
           uuid:
             type: string
             description: UUID of the uploaded video.
           status:
             type: string
-            enum:
-              - started
-            description: Current status of the job.
+            enum: [started]
+            description: Job status.
+
     JobSuccess:
       name: JobSuccess
       title: Job Success Event
-      summary: Event triggered when a transcription job completes successfully.
-      contentType: application/json
+      summary: Event sent when a transcription job completes successfully.
       payload:
         type: object
         required:
@@ -159,9 +174,8 @@ components:
         properties:
           status:
             type: string
-            enum:
-              - success
-            description: Status of the job.
+            enum: [success]
+            description: Job status.
           job_id:
             type: string
             description: Unique identifier for the transcription job.
@@ -171,16 +185,16 @@ components:
           url:
             type: string
             format: uri
-            description: URL where the transcription result can be downloaded.
+            description: URL for the transcription result.
           duration:
             type: number
             format: float
             description: Duration of the video in seconds.
+
     JobFailure:
       name: JobFailure
       title: Job Failure Event
-      summary: Event triggered when a transcription job fails.
-      contentType: application/json
+      summary: Event sent when a transcription job fails.
       payload:
         type: object
         required:
@@ -192,9 +206,8 @@ components:
         properties:
           status:
             type: string
-            enum:
-              - failure
-            description: Status of the job.
+            enum: [failure]
+            description: Job status.
           job_id:
             type: string
             description: Unique identifier for the transcription job.
@@ -203,10 +216,11 @@ components:
             description: Name of the uploaded video file.
           error_type:
             type: string
-            description: Type of the error encountered.
+            description: Type of error encountered.
           error_value:
             type: string
-            description: Detailed description of the error.
+            description: Error description.
+
   securitySchemes:
     RabbitMQAuth:
       type: userPassword
