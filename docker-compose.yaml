@@ -1,12 +1,12 @@
 services:
     api:
         build:
-            context: ./WAAS
+            context: .
             dockerfile: Dockerfile
         ports:
             - "3000:3000"
         volumes:
-            - ./WAAS:/workspace
+            - .:/workspace
         depends_on:
             - redis
             - rabbitmq
@@ -15,10 +15,10 @@ services:
 
     worker:
         build:
-            context: ./WAAS
+            context: .
             dockerfile: Dockerfile
         volumes:
-            - ./WAAS:/workspace
+            - .:/workspace
         depends_on:
             - redis
             - rabbitmq
@@ -28,10 +28,10 @@ services:
 
     subscriber:
         build:
-            context: ./WAAS
+            context: .
             dockerfile: Dockerfile
         volumes:
-            - ./WAAS:/workspace
+            - .:/workspace
         depends_on:
             - rabbitmq
             - redis
