@@ -1,0 +1,56 @@
+services:
+    api:
+        build:
+            context: ./WAAS
+            dockerfile: Dockerfile
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./WAAS:/workspace
+        depends_on:
+            - redis
+            - rabbitmq
+        env_file:
+            - ./WAAS/.env
+
+    worker:
+        build:
+            context: ./WAAS
+            dockerfile: Dockerfile
+        volumes:
+            - ./WAAS:/workspace
+        depends_on:
+            - redis
+            - rabbitmq
+        env_file:
+            - ./WAAS/.env
+        command: rq worker --url redis://redis:6379 -c worker-settings
+
+    subscriber:
+        build:
+            context: ./WAAS
+            dockerfile: Dockerfile
+        volumes:
+            - ./WAAS:/workspace
+        depends_on:
+            - rabbitmq
+            - redis
+        env_file:
+            - ./WAAS/.env
+        environment:
+            - PYTHONPATH=/workspace
+        command: python src/events/rabbitmq/subscriber_worker.py
+
+    redis:
+        image: redis
+        ports:
+            - "6379:6379"
+
+    rabbitmq:
+        image: rabbitmq:4.0-management
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+        environment:
+            - RABBITMQ_DEFAULT_USER=guest
+            - RABBITMQ_DEFAULT_PASS=guest
