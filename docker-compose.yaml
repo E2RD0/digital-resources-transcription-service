@@ -11,7 +11,7 @@ services:
             - redis
             - rabbitmq
         env_file:
-            - ./WAAS/.env
+            - .env
 
     worker:
         build:
@@ -23,7 +23,7 @@ services:
             - redis
             - rabbitmq
         env_file:
-            - ./WAAS/.env
+            - .env
         command: rq worker --url redis://redis:6379 -c worker-settings
 
     subscriber:
@@ -36,7 +36,7 @@ services:
             - rabbitmq
             - redis
         env_file:
-            - ./WAAS/.env
+            - .env
         environment:
             - PYTHONPATH=/workspace
         command: python src/events/rabbitmq/subscriber_worker.py
