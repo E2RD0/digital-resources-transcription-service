@@ -32,15 +32,19 @@ def process_video_event(ch, method, properties, body):
     try:
         # Parse the incoming message
         event = json.loads(body)
-        if "video" not in event or "extraFields" not in event["video"] or "libraryId" not in event["video"] or "uuid" not in event["video"]:
-            print("Invalid event payload.")
+        if "video" not in event or "library" not in event["video"] or "uuid" not in event["video"]:
+            print("Invalid event payload")
             return
 
         video = event["video"]
-        library_id = video["libraryId"]
+        library_id = video["library"]['externalId']
         uuid = video["uuid"]
         uploaded_filename = video.get("title", DEFAULT_UPLOADED_FILENAME)
-        temp_video_path = video["extraFields"].get("tempVideoPath")
+        temp_video_path = video["tempVideoPath"]
+        
+        if not temp_video_path:
+            print("No video file path provided.")
+            return
 
         # Download the video file
         download_url = f"{SERVICE_URL}/video/download/{library_id}/{uuid}"
@@ -120,7 +124,7 @@ def process_video_event(ch, method, properties, body):
             "language": "transcribe"
         })
         
-        langs = ["en", "es", "fr", "it"]
+        langs = []
         if(language and language in langs):
             langs = langs.remove(language)
         for lang in langs:

@@ -15,7 +15,7 @@ class Publisher:
         self.connect()
 
     def connect(self):
-        retries = 5  # Number of reconnection attempts
+        retries = 5
         while retries > 0:
             try:
                 print("Attempting to connect to RabbitMQ...")
@@ -33,11 +33,17 @@ class Publisher:
 
     def publish(self, event_type: str, message: dict):
         try:
+            # Check connection and channel
             if self.connection is None or self.connection.is_closed:
                 print("RabbitMQ connection lost. Reconnecting...")
                 self.connect()
 
-            # Publish message
+            if self.channel is None or self.channel.is_closed:
+                print("RabbitMQ channel closed. Recreating channel...")
+                self.channel = self.connection.channel()
+                self.channel.queue_declare(queue=self.queue_name, durable=True)
+
+            # Publish the message
             self.channel.basic_publish(
                 exchange="",
                 routing_key=self.queue_name,
