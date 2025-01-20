@@ -1,0 +1,1 @@
+MODELS = ['tiny', 'base', 'small']

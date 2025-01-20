@@ -23,10 +23,10 @@ from sentry_sdk.integrations.rq import RqIntegration
 from src import callbacks
 from src.utils import (generate_jojo_doc, generate_srt, generate_text,
                        generate_vtt, get_total_time_transcribed,
-                       sanitize_input)
+                       sanitize_input, is_model_supported)
 from src.services.webhook_service import WebhookService
 
-SENTRY_DSN = os.environ.get("SENTRY_DSN")
+SENTRY_DSN = os.environ.get("SENTRY_DSN", None)
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 
 if SENTRY_DSN:
@@ -185,15 +185,11 @@ def transcribe() -> Any:
             quoted_email = request.args.get("email_callback")
             quoted_webhook_id = request.args.get("webhook_id")
             
-            if quoted_email is None and quoted_webhook_id is None:
-                raise Exception("Missing email_callback or/and webhook_id param")
-            
             if quoted_email:
                 email = urllib.parse.unquote(quoted_email)
                 set_user({"email": email})
             else:
                 email = None
-
             
             if quoted_webhook_id:
                 webhook_id = urllib.parse.unquote(quoted_webhook_id)
@@ -205,6 +201,11 @@ def transcribe() -> Any:
                     }, 405
             else:
                 webhook_id = None
+                
+            if (not is_model_supported(requestedModel)):
+                return {
+                    "error": "Model not supported"
+                }, 405
 
             uploaded_filename = urllib.parse.unquote(
                 request.args.get("filename", DEFAULT_UPLOADED_FILENAME))
@@ -401,6 +402,11 @@ def detect() -> Any:
             # Get the file from the request body and save it to a temporary file
             file = request.data
             tempFile.write(file)
+            
+            if(not is_model_supported(requestedModel)):
+                return {
+                    "error": "Model not supported"
+                }, 405
 
             model = whisper.load_model(requestedModel)
 

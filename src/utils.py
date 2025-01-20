@@ -106,3 +106,7 @@ def generate_jojo_doc(filename: str, result: Any) -> str:
             "text": f"{segment['text'].strip().replace('-->', '->')}"
         })
     return dumps(output)
+
+def is_model_supported(model: str) -> bool:
+    SUPPORTED_MODELS = ['tiny', 'base', 'small'];
+    return model in SUPPORTED_MODELS
