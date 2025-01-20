@@ -124,7 +124,7 @@ def process_video_event(ch, method, properties, body):
             "language": "transcribe"
         })
         
-        langs = []
+        langs = ["en", "es", "it"]
         if(language and language in langs):
             langs = langs.remove(language)
         for lang in langs:
