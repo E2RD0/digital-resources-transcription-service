@@ -117,10 +117,12 @@ def process_video_event(ch, method, properties, body):
             "uploaded_filename": uploaded_filename,
             "library_id": library_id,
             "uuid": uuid,
-            "language": language or "transcribe"
+            "language": "transcribe"
         })
         
         langs = ["en", "es", "fr", "it"]
+        if(language and language in langs):
+            langs = langs.remove(language)
         for lang in langs:
             job = rq_queue.enqueue(
                 'transcriber.transcribe',
@@ -195,7 +197,7 @@ def send_job_started_event(job, video):
     print(f"Enqueued transcription job with ID: {job.get_id()}")
     # Dispatch the 'job_started' event
     event_dispatcher.dispatch_event(
-        event_type="job_started",
+        event_type="job_processing",
         payload={
             "job_id": job.get_id(),
             "uploaded_filename": video["uploaded_filename"],

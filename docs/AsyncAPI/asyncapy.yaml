@@ -28,8 +28,8 @@ channels:
         payload:
           $ref: '#/components/messages/VideoUploaded'
 
-  job_started:
-    address: job_started
+  job_processing:
+    address: job_processing
     description: The channel for sending events when a transcription job starts.
     messages:
       JobStarted:
@@ -37,8 +37,8 @@ channels:
         payload:
           $ref: '#/components/messages/JobStarted'
 
-  job_success:
-    address: job_success
+  job_completed:
+    address: job_completed
     description: The channel for sending events when a transcription job succeeds.
     messages:
       JobSuccess:
@@ -46,8 +46,8 @@ channels:
         payload:
           $ref: '#/components/messages/JobSuccess'
 
-  job_failure:
-    address: job_failure
+  job_failed:
+    address: job_failed
     description: The channel for sending events when a transcription job fails.
     messages:
       JobFailure:
@@ -67,26 +67,26 @@ operations:
   jobStartedSent:
     action: send
     channel:
-      $ref: '#/channels/job_started'
+      $ref: '#/channels/job_processing'
     summary: Send job started events
     messages:
-      - $ref: '#/channels/job_started/messages/JobStarted'
+      - $ref: '#/channels/job_processing/messages/JobStarted'
 
   jobSuccessSent:
     action: send
     channel:
-      $ref: '#/channels/job_success'
+      $ref: '#/channels/job_completed'
     summary: Send job success events
     messages:
-      - $ref: '#/channels/job_success/messages/JobSuccess'
+      - $ref: '#/channels/job_completed/messages/JobSuccess'
 
   jobFailureSent:
     action: send
     channel:
-      $ref: '#/channels/job_failure'
+      $ref: '#/channels/job_failed'
     summary: Send job failure events
     messages:
-      - $ref: '#/channels/job_failure/messages/JobFailure'
+      - $ref: '#/channels/job_failed/messages/JobFailure'
 
 components:
   messages:

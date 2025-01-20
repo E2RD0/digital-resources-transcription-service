@@ -60,7 +60,7 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
             "libraryId": libraryId
         }
     try:
-        dispatcher.dispatch_event("job_success", message)
+        dispatcher.dispatch_event("job_completed", message)
     except Exception as e:
         # Log and continue without raising
         print(f"Unable to dispatch success event: {e}")
