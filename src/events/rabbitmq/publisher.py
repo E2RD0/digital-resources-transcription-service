@@ -1,3 +1,4 @@
+import functools
 import json
 import time
 import uuid
@@ -65,6 +66,12 @@ class Publisher:
             self.publish(event_type, message)  # Retry publishing after reconnecting
         except Exception as e:
             print(f"Failed to publish message: {e}")
+            raise e
+    def safe_publish(self, event_type: str, message: dict):
+        try:
+            self.connection.add_callback_threadsafe(functools.partial(self.publish, event_type, message))
+        except Exception as e:
+            print(f"Failed to publish message safely: {e}")
             raise e
 
     def close(self):

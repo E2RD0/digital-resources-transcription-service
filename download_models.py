@@ -7,7 +7,7 @@ available_models = whisper.available_models()
 
 print("Available models: " + str(available_models))
 
-SUPPORTED_MODELS = ['tiny', 'base', 'small'];
+SUPPORTED_MODELS = ['tiny', 'base', 'small', 'medium'];
 
 # For each model, download the model using load_model to cache it
 for model in available_models:

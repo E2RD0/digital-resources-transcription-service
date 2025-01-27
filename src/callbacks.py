@@ -11,8 +11,6 @@ webhook_store = WebhookService(allowed_webhooks_file)
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 
-dispatcher = EventDispatcher()  # Initialize EventDispatcher
-
 class JobCallbackException(Exception):
     pass
 
@@ -60,6 +58,7 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
             "libraryId": libraryId
         }
     try:
+        dispatcher = EventDispatcher()
         dispatcher.dispatch_event("job_completed", message)
     except Exception as e:
         # Log and continue without raising
@@ -103,6 +102,7 @@ def failure(job: Job, connection: Any, type: Any, value: Any, traceback: Any):
             "libraryId": libraryId
         }
     try:
+        dispatcher = EventDispatcher()
         dispatcher.dispatch_event("job_failure", message)
     except Exception as e:
         # Log and continue without raising

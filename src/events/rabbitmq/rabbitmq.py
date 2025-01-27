@@ -15,7 +15,7 @@ def get_rabbitmq_connection():
             port=RABBITMQ_PORT,
             virtual_host=RABBITMQ_VHOST,
             credentials=credentials,
-            heartbeat=30,  # Keep the connection alive with a heartbeat every 60 seconds
+            heartbeat=60,  # Keep the connection alive with a heartbeat every 60 seconds
             blocked_connection_timeout=300  # Timeout for blocked connections
         )
     )
