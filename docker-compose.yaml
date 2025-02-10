@@ -9,7 +9,6 @@ services:
             - .:/workspace
         depends_on:
             - redis
-            - rabbitmq
         env_file:
             - .env
 
@@ -21,7 +20,6 @@ services:
             - .:/workspace
         depends_on:
             - redis
-            - rabbitmq
         env_file:
             - .env
         command: rq worker --url redis://redis:6379 -c worker-settings
@@ -33,7 +31,6 @@ services:
         volumes:
             - .:/workspace
         depends_on:
-            - rabbitmq
             - redis
         env_file:
             - .env
@@ -45,12 +42,3 @@ services:
         image: redis
         ports:
             - "6379:6379"
-
-    rabbitmq:
-        image: rabbitmq:4.0-management
-        ports:
-            - "5672:5672"
-            - "15672:15672"
-        environment:
-            - RABBITMQ_DEFAULT_USER=guest
-            - RABBITMQ_DEFAULT_PASS=guest
