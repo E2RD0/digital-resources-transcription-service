@@ -37,6 +37,7 @@ def process_video_event(ch, method, properties, body):
             return
 
         video = event["video"]
+        languagesToTranslate = event["requestedLangs"]
         library_id = video["library"]['externalId']
         uuid = video["uuid"]
         uploaded_filename = video.get("title", DEFAULT_UPLOADED_FILENAME)

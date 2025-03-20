@@ -59,7 +59,8 @@ rq_queue = Queue(connection=redis_connection)
 allowed_webhooks_file = os.environ.get("ALLOWED_WEBHOOKS_FILE", None)
 webhook_store = WebhookService(allowed_webhooks_file)
 
-DEFAULT_MODEL = "small"
+DEFAULT_MODEL = "medium"
+DETECT_MODEL = "small"
 DEFAULT_TASK = "transcribe"
 DEFAULT_OUTPUT = "srt"
 DEFAULT_UPLOADED_FILENAME = "untitled-transcription"
@@ -90,16 +91,13 @@ def is_invalid_params(req: Request) -> Union[bool, Tuple[str, int]]:
     if not req.data or not isinstance(req.data, bytes):
         return "No file uploaded", 400
     
-    # Check if email_callback or webhook_callback_url is set
-    if email_callback is None and webhook_id is None:
-        return "No email_callback or webhook_callback_url set", 400
 
     return False
 
 
 @app.route("/openapi.json", methods=['GET'])
 def serve_swagger_file():
-    PATH = os.path.join(os.path.dirname(__file__), '../docs/apiREST/openapi.yaml')
+    PATH = os.path.join(os.path.dirname(__file__), '../docs/RestAPI/openapi.yaml')
     with open(PATH, 'r') as source_file:
         pystruct = yaml.safe_load(source_file)
     return jsonify(pystruct), 200
@@ -384,7 +382,7 @@ def detect() -> Any:
                     "type": "enum",
                     "options": whisper.available_models(),
                     "optional": True,
-                    "default": DEFAULT_MODEL,
+                    "default": DETECT_MODEL,
                 },
             }
         }
@@ -393,7 +391,7 @@ def detect() -> Any:
 
         try:
             # get model query parameter
-            requestedModel = request.args.get("model", DEFAULT_MODEL)
+            requestedModel = request.args.get("model", DETECT_MODEL)
 
             request_is_invalid = is_invalid_params(request)
             if request_is_invalid:
