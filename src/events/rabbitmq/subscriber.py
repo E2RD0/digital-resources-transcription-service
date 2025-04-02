@@ -1,5 +1,5 @@
 from src.events.rabbitmq.rabbitmq import get_rabbitmq_connection
-
+import traceback
 class Subscriber:
     def __init__(self, queue_name: str, callback):
         self.queue_name = queue_name
@@ -14,9 +14,9 @@ class Subscriber:
                 self.callback(ch, method, properties, body)
                 ch.basic_ack(delivery_tag=method.delivery_tag) 
             except Exception as e:
+                
                 print(f"Error processing message: {e}")
-                # Optionally, do not ack the message to re-queue it
-
+                traceback.print_exc()
         self.channel.basic_consume(
             queue=self.queue_name,
             on_message_callback=wrapped_callback,

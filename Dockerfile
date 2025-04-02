@@ -22,7 +22,6 @@ COPY src src
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Set environment variables
-ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
 # Default command

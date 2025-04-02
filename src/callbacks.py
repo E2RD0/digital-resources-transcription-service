@@ -24,7 +24,29 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
         raise JobCallbackException('Missing filename in job meta')
 
     url = (os.environ.get("BASE_URL") or '') + "/v1/download/" + job.id
-
+    
+    if (isinstance(result, tuple) and 'error' in result[0]):
+        print(f"Transcription error: {result[0]['error']}")
+        message = {
+            "status": "failure",
+            "job_id": job.id,
+            "filename": filename or "Unknown",
+            "url": url,
+            "error_type": "TranscriptionError",
+            "error_value": result[0]['error']
+        }
+        if uuid and libraryId:
+            message["video"] = {
+                "uuid": uuid,
+                "libraryId": libraryId
+            }
+        try:
+            dispatcher = EventDispatcher()
+            dispatcher.dispatch_event("job_failure", message)
+        except Exception as e:
+            print(f"Unable to dispatch failure event: {e}")
+        return
+    
     duration = result['segments'][-1]['end']
     increment_total_time_transcribed(duration, conn=connection)
 

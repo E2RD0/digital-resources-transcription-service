@@ -1,1 +1,1 @@
-MODELS = ['tiny', 'base', 'small']
+MODELS = ['tiny', 'base', 'small', 'medium', 'large']

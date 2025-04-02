@@ -142,3 +142,6 @@ testfiles
 #Uploads
 upload-shared-tmp
 
+# supervisord logs
+supervisord.log*
+supervisord.pid

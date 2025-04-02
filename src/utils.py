@@ -108,5 +108,5 @@ def generate_jojo_doc(filename: str, result: Any) -> str:
     return dumps(output)
 
 def is_model_supported(model: str) -> bool:
-    SUPPORTED_MODELS = ['tiny', 'base', 'small'];
+    SUPPORTED_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
     return model in SUPPORTED_MODELS

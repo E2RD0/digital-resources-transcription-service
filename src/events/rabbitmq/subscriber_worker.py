@@ -5,10 +5,11 @@ import tempfile
 import urllib.parse
 import mimetypes
 import logging
+import whisper
 
 from src.events.rabbitmq.subscriber import Subscriber
 from src.events.rabbitmq.event_dispatcher import EventDispatcher
-from src.main import rq_queue, DEFAULT_MODEL, DEFAULT_TASK, webhook_store, callbacks
+from src.main import rq_queue, DEFAULT_MODEL, DETECT_MODEL, DEFAULT_TASK, webhook_store, callbacks
 
 SERVICE_URL = os.environ.get("SERVICE_URL", "localhost:4000")
 DEFAULT_UPLOADED_FILENAME = "untitled-transcription"
@@ -28,18 +29,20 @@ def process_video_event(ch, method, properties, body):
     """
     temp_dir = './upload-shared-tmp'
     os.makedirs(temp_dir, exist_ok=True)  # Ensure the directory exists
-
-    try:
         # Parse the incoming message
-        event = json.loads(body)
-        if "video" not in event or "library" not in event["video"] or "uuid" not in event["video"]:
-            print("Invalid event payload")
-            return
+    event = json.loads(body)
+    if "video" not in event or "library" not in event["video"] or "uuid" not in event["video"]:
+        print("Invalid event payload")
+        return
 
-        video = event["video"]
-        languagesToTranslate = event["requestedLangs"]
-        library_id = video["library"]['externalId']
-        uuid = video["uuid"]
+    video = event["video"]
+    uuid = video["uuid"] if "uuid" in video else ""
+    library_id = video["library"]['externalId'] if "library" in video and "externalId" in video["library"] else ""
+    
+    try:
+        languagesToTranslate = event["requestedLangs"].split(',') if "requestedLangs" in event else []
+        if languagesToTranslate and len(languagesToTranslate) == 1 and languagesToTranslate[0] == "":
+            languagesToTranslate = []
         uploaded_filename = video.get("title", DEFAULT_UPLOADED_FILENAME)
         temp_video_path = video["tempVideoPath"]
         
@@ -78,11 +81,30 @@ def process_video_event(ch, method, properties, body):
             temp_filename = temp_file.name
 
         print(f"Video saved to temporary file: {temp_filename}")
+        
+        # Detect the language of the video
+        model = whisper.load_model(DETECT_MODEL)
 
+        # load audio and pad/trim it to fit 30 seconds
+        audio = whisper.load_audio(temp_filename)
+        audio = whisper.pad_or_trim(audio)
+
+        # make log-Mel spectrogram and move to the same device as the model
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+
+        # detect the spoken language
+        _, probs = model.detect_language(mel)
+        detected_lang = max(probs, key=probs.get)
+        detectedLanguage = {
+            "detectedLanguage": whisper.tokenizer.LANGUAGES[detected_lang],
+            "languageCode": detected_lang
+        }
+
+        send_detected_language_event(video, detectedLanguage)
         # Set default parameters
         requested_model = DEFAULT_MODEL
         task = DEFAULT_TASK
-        language = None
+        language = detected_lang or None
         email = None
         webhook_id = None
 
@@ -122,12 +144,12 @@ def process_video_event(ch, method, properties, body):
             "uploaded_filename": uploaded_filename,
             "library_id": library_id,
             "uuid": uuid,
-            "language": "transcribe"
+            "language": language or "transcribe"
         })
         
-        langs = ["en", "es", "it"]
-        if(language and language in langs):
-            langs = langs.remove(language)
+        langs = languagesToTranslate if (languagesToTranslate and len(languagesToTranslate)) else ['es', 'en', 'fr', 'pt']
+        if(language and (language in langs)):
+            langs.remove(language)
         for lang in langs:
             job = rq_queue.enqueue(
                 'transcriber.transcribe',
@@ -205,14 +227,27 @@ def send_job_started_event(job, video):
         event_type="job_processing",
         payload={
             "job_id": job.get_id(),
-            "uploaded_filename": video["uploaded_filename"],
-            "library_id": video["library_id"],
+            "uploadedFilename": video["uploaded_filename"],
+            "libraryId": video["library_id"],
             "uuid": video["uuid"],
             "status": "started",
             "language": video.get("language", "transcribe"),
         }
     )
     print(f"Dispatched 'job_started' event for job ID: {job.get_id()}")
+   
+def send_detected_language_event(video, videoLang):
+    message = {
+        "status": "language_detected",
+        "language": videoLang["detectedLanguage"],
+        "languageCode": videoLang["languageCode"]
+    }
+    if(video["uuid"] and video["library"]['externalId']):
+        message["video"] = {
+            "uuid": video["uuid"],
+            "libraryId": video["library"]['externalId']
+        } 
+    event_dispatcher.dispatch_event("language_detected", message)
 
 
 if __name__ == "__main__":
