@@ -7,10 +7,13 @@ import os
 from src.events.rabbitmq.rabbitmq import get_rabbitmq_connection
 
 RABBITMQ_APP_ID = os.environ.get("RABBITMQ_APP_ID", None)
-
+RABBITMQ_EXCHANGE = os.environ.get("RABBITMQ_EXCHANGE", "sagittarius-a")
+RABBITMQ_EXCHANGE_TYPE = os.environ.get("RABBITMQ_EXCHANGE_TYPE", "fanout")
 class Publisher:
-    def __init__(self, queue_name: str):
-        self.queue_name = queue_name
+    def __init__(self, routing_key: str = ""):
+        self.routing_key = routing_key
+        self.app_id = RABBITMQ_APP_ID
+        self.exchange = RABBITMQ_EXCHANGE
         self.connection = None
         self.channel = None
         self.connect()
@@ -22,7 +25,7 @@ class Publisher:
                 print("Attempting to connect to RabbitMQ...")
                 self.connection = get_rabbitmq_connection()
                 self.channel = self.connection.channel()
-                self.channel.queue_declare(queue=self.queue_name, durable=True)
+                self.channel.exchange_declare(exchange=self.exchange, exchange_type=RABBITMQ_EXCHANGE_TYPE, durable=True)
                 print("Connected to RabbitMQ.")
                 return
             except Exception as e:
@@ -35,46 +38,48 @@ class Publisher:
     def publish(self, event_type: str, message: dict):
         try:
             # Check connection and channel
-            if self.connection is None or self.connection.is_closed:
+            if not self.connection or self.connection.is_closed:
                 print("RabbitMQ connection lost. Reconnecting...")
                 self.connect()
-
-            if self.channel is None or self.channel.is_closed:
+            if not self.channel or self.channel.is_closed:
                 print("RabbitMQ channel closed. Recreating channel...")
                 self.channel = self.connection.channel()
-                self.channel.queue_declare(queue=self.queue_name, durable=True)
-
+                self.channel.exchange_declare(exchange=self.exchange, exchange_type=RABBITMQ_EXCHANGE_TYPE, durable=True)
+                
             # Publish the message
+            message_id = str(uuid.uuid4())
+            payload = {
+                "uuid": message_id,
+                "fired_at": time.strftime("%Y-%m-%dT%H:%M:%S.%fZ", time.gmtime()),
+                "data" : message,
+            }
+
             self.channel.basic_publish(
-                exchange="",
-                routing_key=self.queue_name,
-                body=json.dumps(message),
+                exchange=self.exchange,
+                routing_key=self.exchange,  # Fanout ignores routing key
+                body=json.dumps(payload),
                 properties=pika.BasicProperties(
                     delivery_mode=2,
                     content_type="application/json",
-                    type=f"{self.queue_name}.{event_type}",
-                    message_id=str(uuid.uuid4()),
-                    app_id=RABBITMQ_APP_ID
+                    type=f"{self.app_id}.{event_type}",
+                    message_id=message_id,
+                    app_id=RABBITMQ_APP_ID,
+                    timestamp=int(time.time()),
+                    headers= {
+                        'content_type': 'application/json',
+                        'type': f"{self.app_id}.{event_type}",
+                    }
                 )
             )
-            print(f"Published message to {self.queue_name}: {message}")
+            print(f"Published to exchange '{self.exchange}' with type '{event_type}'")
+
         except (pika.exceptions.ConnectionClosedByBroker,
                 pika.exceptions.StreamLostError,
                 pika.exceptions.AMQPConnectionError) as e:
             print(f"Connection lost while publishing: {e}. Reconnecting...")
             self.connect()
             self.publish(event_type, message)  # Retry publishing after reconnecting
-        except Exception as e:
-            print(f"Failed to publish message: {e}")
-            raise e
-    def safe_publish(self, event_type: str, message: dict):
-        try:
-            self.connection.add_callback_threadsafe(functools.partial(self.publish, event_type, message))
-        except Exception as e:
-            print(f"Failed to publish message safely: {e}")
-            raise e
 
     def close(self):
         if self.connection and self.connection.is_open:
             self.connection.close()
-            print("RabbitMQ connection closed.")
