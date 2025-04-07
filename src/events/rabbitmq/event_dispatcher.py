@@ -3,8 +3,6 @@ from src.events.rabbitmq.subscriber import Subscriber
 import os
 
 RABBITMQ_APP_ID = os.environ.get("RABBITMQ_APP_ID", None)
-RABBITMQ_CONSUME_QUEUE = os.environ.get("RABBITMQ_CONSUME_QUEUE", None)
-
 
 class EventDispatcher:
     def __init__(self):

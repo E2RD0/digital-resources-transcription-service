@@ -27,8 +27,8 @@ def get_extension_from_content_type(content_type: str) -> str:
 def process_video_events(payload: dict, properties):
     event_type = properties.type if hasattr(properties, "type") else None
     if event_type not in (
-        f"{RABBITMQ_CONSUME_QUEUE}.video_uploaded",
-        f"{RABBITMQ_CONSUME_QUEUE}.video_translation_requested",
+        "teaching-action.digital-resources-video-service.video_uploaded",
+        "teaching-action.digital-resources-video-service.video_translation_requested",
     ):
         print(f"Ignoring message with event type: {event_type}")
         return
@@ -164,7 +164,7 @@ def start_subscriber():
     Initialize the RabbitMQ subscriber and start consuming messages.
     """
     print("Starting RabbitMQ subscriber...")
-    queue_name = os.environ.get("RABBITMQ_CONSUME_QUEUE", None)
+    queue_name = RABBITMQ_CONSUME_QUEUE;
     if queue_name is None:
         raise ValueError("RABBITMQ_CONSUME_QUEUE must be set")
     subscriber = Subscriber(queue_name, process_video_events)
