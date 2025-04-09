@@ -128,9 +128,11 @@ def process_video_events(payload: dict, properties):
         })
 
         # Additional translations
+        if not languagesToTranslate:
+            languagesToTranslate = ['es', 'en', 'fr', 'pt']
         if language in languagesToTranslate:
             languagesToTranslate.remove(language)
-        for lang in languagesToTranslate or ['es', 'en', 'fr', 'pt']:
+        for lang in languagesToTranslate:
             job = rq_queue.enqueue(
                 'transcriber.transcribe',
                 args=(temp_filename, requested_model, 'transcribe', lang, email, webhook_id),
