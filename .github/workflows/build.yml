@@ -1,0 +1,23 @@
+name: build-and-push
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      - run: docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/app:latest -f Dockerfile .
+      - run: |
+          docker tag ${{ secrets.ACR_LOGIN_SERVER }}/app:latest ${{ secrets.ACR_LOGIN_SERVER }}/api:latest
+          docker tag ${{ secrets.ACR_LOGIN_SERVER }}/app:latest ${{ secrets.ACR_LOGIN_SERVER }}/worker:latest
+          docker tag ${{ secrets.ACR_LOGIN_SERVER }}/app:latest ${{ secrets.ACR_LOGIN_SERVER }}/subscriber:latest
+      - run: |
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/api:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/worker:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/subscriber:latest
