@@ -20,10 +20,12 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
     filename = job.meta.get("uploaded_filename")
     uuid = job.meta.get("uuid") or ""
     libraryId = job.meta.get("library_id") or ""
+    languagesToTranslate = job.meta.get("languages_to_translate") or []
     if filename is None:
         raise JobCallbackException('Missing filename in job meta')
 
-    url = (os.environ.get("BASE_URL") or '') + "/v1/download/" + job.id
+    url = (os.environ.get("BASE_URL") or '') + "/v1/jobs/" + job.id
+    downloadUrl = (os.environ.get("BASE_URL") or '') + "/v1/download/" + job.id
     
     if (isinstance(result, tuple) and 'error' in result[0]):
         print(f"Transcription error: {result[0]['error']}")
@@ -31,18 +33,18 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
             "status": "failure",
             "job_id": job.id,
             "filename": filename or "Unknown",
-            "url": url,
+            "languages_to_translate": languagesToTranslate,
             "error_type": "TranscriptionError",
             "error_value": result[0]['error']
         }
         if uuid and libraryId:
-            message["video"] = {
+            message["resource"] = {
                 "uuid": uuid,
-                "libraryId": libraryId
+                "library_external_Id": libraryId
             }
         try:
             dispatcher = EventDispatcher()
-            dispatcher.dispatch_event("job_failure", message)
+            dispatcher.dispatch_event("transcription_failed", message)
         except Exception as e:
             print(f"Unable to dispatch failure event: {e}")
         return
@@ -72,16 +74,18 @@ def success(job: Job, connection: Any, result: Any, *args, **kwargs):
         "job_id": job.id,
         "filename": filename,
         "url": url,
+        "download_url": downloadUrl,
         "duration": duration,
+        "languages_to_translate": languagesToTranslate,
     }
     if uuid and libraryId:
-        message["video"] = {
+        message["resource"] = {
             "uuid": uuid,
-            "libraryId": libraryId
+            "library_external_id": libraryId
         }
     try:
         dispatcher = EventDispatcher()
-        dispatcher.dispatch_event("job_completed", message)
+        dispatcher.dispatch_event("transcription_completed", message)
     except Exception as e:
         # Log and continue without raising
         print(f"Unable to dispatch success event: {e}")
@@ -92,6 +96,7 @@ def failure(job: Job, connection: Any, type: Any, value: Any, traceback: Any):
     filename = job.meta.get("uploaded_filename")
     uuid = job.meta.get("uuid") or ""
     libraryId = job.meta.get("library_id") or ""
+    languagesToTranslate = job.meta.get("languages_to_translate") or []
     if filename is None:
         raise JobCallbackException('Missing filename in job meta')
 
@@ -115,17 +120,18 @@ def failure(job: Job, connection: Any, type: Any, value: Any, traceback: Any):
         "status": "failure",
         "job_id": job.id,
         "filename": filename or "Unknown",
+        "languages_to_translate": languagesToTranslate,
         "error_type": str(type),
         "error_value": str(value)
     }
     if uuid and libraryId:
-        message["video"] = {
+        message["resource"] = {
             "uuid": uuid,
-            "libraryId": libraryId
+            "library_external_id": libraryId
         }
     try:
         dispatcher = EventDispatcher()
-        dispatcher.dispatch_event("job_failure", message)
+        dispatcher.dispatch_event("transcription_failed", message)
     except Exception as e:
         # Log and continue without raising
         print(f"Unable to dispatch failure event: {e}")

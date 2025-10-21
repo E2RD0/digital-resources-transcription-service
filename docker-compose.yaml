@@ -1,44 +1,72 @@
 services:
-    api:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        ports:
-            - "3000:3000"
-        volumes:
-            - .:/workspace
-        depends_on:
-            - redis
-        env_file:
-            - .env
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/workspace
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - external-net
+    restart: unless-stopped
 
-    worker:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        volumes:
-            - .:/workspace
-        depends_on:
-            - redis
-        env_file:
-            - .env
-        command: rq worker --url redis://redis:6379 -c worker-settings
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/workspace
+      - RQ_REDIS_URL=redis://redis:6379/0
+    networks:
+      - external-net
+    restart: unless-stopped
+    command: rq worker --url redis://redis:6379/0 -c worker-settings
 
-    subscriber:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        volumes:
-            - .:/workspace
-        depends_on:
-            - redis
-        env_file:
-            - .env
-        environment:
-            - PYTHONPATH=/workspace
-        command: python src/events/rabbitmq/subscriber_worker.py
+  subscriber:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/workspace
+    networks:
+      - external-net
+    restart: unless-stopped
+    command: python src/events/rabbitmq/subscriber_worker.py
 
-    redis:
-        image: redis
-        ports:
-            - "6379:6379"
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - external-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  external-net:
+    external: true

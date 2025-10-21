@@ -1,15 +1,19 @@
 import traceback
 import json
+import os
 from src.events.rabbitmq.rabbitmq import get_rabbitmq_connection
 
 import pika
 
-RABBITMQ_EXCHANGE = "sagittarius-a"
-RABBITMQ_EXCHANGE_TYPE = "fanout"
+RABBITMQ_EXCHANGE = os.environ.get("RABBITMQ_EXCHANGE", "sagittarius-a")
+RABBITMQ_EXCHANGE_TYPE = os.environ.get("RABBITMQ_EXCHANGE_TYPE", "fanout")
+RABBITMQ_CONSUME_QUEUE = os.environ.get("RABBITMQ_CONSUME_QUEUE", None)
 
 class Subscriber:
-    def __init__(self, queue_name: str, callback):
-        self.queue_name = queue_name
+    def __init__(self, callback):
+        if RABBITMQ_CONSUME_QUEUE is None:
+            raise ValueError("RABBITMQ_CONSUME_QUEUE must be set in environment variables")
+        self.queue_name = RABBITMQ_CONSUME_QUEUE
         self.exchange = RABBITMQ_EXCHANGE
         self.callback = callback
 

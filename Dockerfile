@@ -1,4 +1,4 @@
-FROM python:3.10-buster
+FROM python:3.10-bookworm
 
 # Set working directory
 WORKDIR /workspace
@@ -22,6 +22,7 @@ COPY src src
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Set environment variables
+ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
 # Default command
